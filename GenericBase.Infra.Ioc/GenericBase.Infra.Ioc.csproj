@@ -1,0 +1,22 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="6.0.19" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="6.0.24" />
+	  <PackageReference Include="Swashbuckle.AspNetCore.Swagger" Version="6.5.0" />
+	  <PackageReference Include="Swashbuckle.AspNetCore.SwaggerGen" Version="6.5.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\GenericBase.Application\GenericBase.Application.csproj" />
+    <ProjectReference Include="..\GenericBase.Domain\GenericBase.Domain.csproj" />
+    <ProjectReference Include="..\GenericBase.Infra.Data\GenericBase.Infra.Data.csproj" />
+  </ItemGroup>
+
+</Project>
