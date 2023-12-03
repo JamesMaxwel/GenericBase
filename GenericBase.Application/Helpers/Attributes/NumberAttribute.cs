@@ -7,7 +7,13 @@ namespace GenericBase.Application.Helpers.Attributes
         protected override ValidationResult? IsValid(object? value, ValidationContext validationContext)
         {
 
-            string numberValue = value as string;
+            if (value is null)
+                return new ValidationResult("Number can not be null!");
+
+
+            if (value is not string numberValue)
+                return new ValidationResult("The value must be a string.");
+
 
             foreach (var item in numberValue)
             {
@@ -18,5 +24,6 @@ namespace GenericBase.Application.Helpers.Attributes
             }
             return ValidationResult.Success;
         }
+
     }
 }

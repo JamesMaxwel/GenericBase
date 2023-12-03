@@ -17,11 +17,9 @@ namespace GenericBase.Application.Services
 {
     public class AuthService : IAuthService
     {
-
         private readonly IUnitOfWork _unitOfWork;
         private readonly IUserRepository _userRepository;
-        private readonly IRoleRepository _roleRepository;
-        private readonly IPermissionRepository _permissionRepository;
+
 
         private readonly JwtSettings _jwtOptions;
 
@@ -29,16 +27,12 @@ namespace GenericBase.Application.Services
         {
             _unitOfWork = unitOfWork;
             _jwtOptions = jwtOptions.Value;
-
             _userRepository = unitOfWork.Users;
-            _roleRepository = unitOfWork.Roles;
-            _permissionRepository = unitOfWork.Permissions;
         }
-
         public async Task<TokenResponseDto> GetTokenAsync(AccountLoginDto login)
         {
 
-            var account = await _userRepository.GetFirstOrDefaultAsync(user => user.Email == login.Email)
+            var account = await _userRepository.GetFirstOrDefaultWithCredentialsAsync(user => user.Email == login.Email)
                 ?? throw new StatusCodeException(HttpStatusCode.BadRequest, "Invalid username or password");
 
             if (account.IsLockedOut)
@@ -47,7 +41,7 @@ namespace GenericBase.Application.Services
             if (!account.IsSamePassword(login.Password))
                 throw new StatusCodeException(HttpStatusCode.BadRequest, "Invalid username or password.");
 
-            var token = await CreateTokenAsync(account.Id);
+            var token = await CreateTokenAsync(account);
 
             return token;
         }
@@ -75,25 +69,19 @@ namespace GenericBase.Application.Services
             var account = await _userRepository.GetFirstOrDefaultWithCredentialsAsync(tkUserId)
               ?? throw new StatusCodeException(HttpStatusCode.BadRequest, "Invalid token");
 
-            var tkJti = result.Claims.FirstOrDefault(
-                cl => cl.Key == JwtRegisteredClaimNames.Jti).Value?.ToString()
-                 ?? throw new StatusCodeException(HttpStatusCode.BadRequest, "Invalid token");
 
-            if (!account.Permissions.Any(c => c.Key == "last-refresh-token" && c.Value == tkJti))
-                throw new StatusCodeException(HttpStatusCode.BadRequest, "Expired token");
+            if (!result.Claims.Any(c => c.Key == JwtRegisteredClaimNames.Jti && c.Value?.ToString() == account.LastJti))
+                throw new StatusCodeException(HttpStatusCode.BadRequest, "Invalid token");
 
             if (account.IsLockedOut)
-                throw new StatusCodeException(HttpStatusCode.BadRequest, "Operator blocked");
+                throw new StatusCodeException(HttpStatusCode.BadRequest, "Account blocked");
 
-            var newToken = await CreateTokenAsync(account.Id);
+            var newToken = await CreateTokenAsync(account);
 
             return newToken;
         }
-
-        private async Task<TokenResponseDto> CreateTokenAsync(Guid userId)
+        private async Task<TokenResponseDto> CreateTokenAsync(User user)
         {
-            var user = await _userRepository.GetFirstOrDefaultWithCredentialsAsync(userId)
-                ?? throw new StatusCodeException(HttpStatusCode.InternalServerError, "Error on generated token");
 
             var at = GenerateAccessToken(user)
                ?? throw new StatusCodeException(HttpStatusCode.InternalServerError, "Error on generated 'at' token");
@@ -103,18 +91,7 @@ namespace GenericBase.Application.Services
             var rt = GenerateRefreshToken(user, jti)
                 ?? throw new StatusCodeException(HttpStatusCode.InternalServerError, "Error on generated 'rt' token");
 
-            var lastRefreshTokenClaim = user.Permissions.FirstOrDefault(cl => cl.Key == "LastRefreshToken");
-
-            if (lastRefreshTokenClaim == null)
-            {
-                var newClaim = new Permission("LastRefreshToken", jti, false);
-                await _permissionRepository.AddAsync(newClaim);
-                user.Permissions.Add(newClaim);
-            }
-            else
-            {
-                lastRefreshTokenClaim.Value = jti;
-            }
+            user.LastJti = jti;
 
             _userRepository.Update(user);
             await _unitOfWork.SaveChangesAsync();
@@ -126,16 +103,16 @@ namespace GenericBase.Application.Services
 
             var claims = new ClaimsIdentity();
 
-            user.Roles.ToList().ForEach(role => role.Permissions.ToList()
-            .ForEach(p => claims.AddClaim(new Claim(p.Key, p.Value))));
+            var roleClaims = user.Roles.SelectMany(role => role.Permissions.Select(p => new Claim(p.Key, p.Value)));
+            var userClaims = user.Permissions.Select(cl => new Claim(cl.Key, cl.Value));
 
-            user.Permissions.Where(p => p.IsPublicInToken == true).ToList()
-                .ForEach(cl => claims.AddClaim(new Claim(cl.Key, cl.Value)));
+            claims.AddClaims(roleClaims);
+            claims.AddClaims(userClaims);
 
-            claims.AddClaim(new Claim("sub", user.Id.ToString()));
-            claims.AddClaim(new Claim("jti", Guid.NewGuid().ToString()));
+            claims.AddClaim(new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()));
+            claims.AddClaim(new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()));
 
-            var handler = new JwtSecurityTokenHandler();
+            var handler = new JwtSecurityTokenHandler() { MapInboundClaims = false };
 
             var securityToken = handler.CreateToken(new SecurityTokenDescriptor
             {
@@ -155,10 +132,10 @@ namespace GenericBase.Application.Services
         private string GenerateRefreshToken(User user, string jti)
         {
             var claims = new ClaimsIdentity();
-            claims.AddClaim(new Claim("sub", user.Id.ToString()));
-            claims.AddClaim(new Claim("jti", jti));
+            claims.AddClaim(new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()));
+            claims.AddClaim(new Claim(JwtRegisteredClaimNames.Jti, jti));
 
-            var handler = new JwtSecurityTokenHandler();
+            var handler = new JwtSecurityTokenHandler() { MapInboundClaims = false };
 
             var securityToken = handler.CreateToken(new SecurityTokenDescriptor
             {
@@ -166,13 +143,14 @@ namespace GenericBase.Application.Services
                 Audience = _jwtOptions.Audience,
                 SigningCredentials = _jwtOptions.SigningCredentials,
                 Subject = claims,
-                NotBefore = DateTime.Now,
-                Expires = DateTime.Now.AddMinutes(_jwtOptions.RefreshTokenExpiration),
+                NotBefore = DateTime.UtcNow,
+                Expires = DateTime.UtcNow.AddMinutes(_jwtOptions.RefreshTokenExpiration),
                 TokenType = "rt+jwt"
             });
 
             var encodedJwt = handler.WriteToken(securityToken);
             return encodedJwt;
         }
+
     }
 }

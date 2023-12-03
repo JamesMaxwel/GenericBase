@@ -36,7 +36,7 @@ namespace GenericBase.Application.Services
 
             return _mapper.Map<AccountResponseDto>(account);
         }
-        public async Task<bool> CreateAsync(AccountCreateDto accountCreateDto)
+        public async Task<AccountResponseDto?> CreateAsync(AccountCreateDto accountCreateDto)
         {
             var account = await _unitOfWork.Users.GetFirstOrDefaultAsync(user => user.Email == accountCreateDto.Email);
 
@@ -47,7 +47,12 @@ namespace GenericBase.Application.Services
 
             await _unitOfWork.Users.AddAsync(user);
 
-            return await _unitOfWork.SaveChangesAsync() > 0;
+
+            if (await _unitOfWork.SaveChangesAsync() > 0)
+                return _mapper.Map<AccountResponseDto>(user);
+
+
+            return null;
 
         }
         public async Task<bool> UpdateAsync(Guid UserId, AccountUpdateDto accountUpdateDto)

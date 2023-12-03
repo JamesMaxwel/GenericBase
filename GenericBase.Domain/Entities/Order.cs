@@ -15,6 +15,6 @@ namespace GenericBase.Domain.Entities
         public Guid CustomerId { get; set; }
         public virtual Customer? Customer { get; set; }
 
-        public ICollection<OrderItem> OrderDetails { get; set; } = new Collection<OrderItem>();
+        public virtual ICollection<OrderItem> OrderDetails { get; set; } = new Collection<OrderItem>();
     }
 }

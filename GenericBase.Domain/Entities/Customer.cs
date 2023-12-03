@@ -8,6 +8,6 @@ namespace GenericBase.Domain.Entities
         public string Name { get; set; } = string.Empty;
         public string Email { get; set; } = string.Empty;
         public string PhoneNumber { get; set; } = string.Empty;
-        public ICollection<Order> Orders { get; set; } = new Collection<Order>();
+        public virtual ICollection<Order> Orders { get; set; } = new Collection<Order>();
     }
 }

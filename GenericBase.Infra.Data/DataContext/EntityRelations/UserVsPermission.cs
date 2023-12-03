@@ -2,7 +2,7 @@
 
 namespace GenericBase.Infra.Data.DataContext.EntityRelations
 {
-    internal class UserVsPermission
+    public class UserVsPermission
     {
         public virtual User? User { get; set; }
         public Guid UserId { get; set; }

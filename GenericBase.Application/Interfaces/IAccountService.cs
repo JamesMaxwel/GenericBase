@@ -8,7 +8,7 @@ namespace GenericBase.Application.Interfaces
         Task<AccountCredentialResponseDto?> GetCredentialsAsync(Guid userId);
         Task<AccountResponseDto?> GetByIdAsync(Guid userId);
         Task<bool> ActivateAsync(Guid userId, AccountActivateDto accountActivateDto);
-        Task<bool> CreateAsync(AccountCreateDto accountCreateDto);
+        Task<AccountResponseDto?> CreateAsync(AccountCreateDto accountCreateDto);
         Task<bool> ResetPasswordAsync(AccountResetPasswordDto accountResetPasswordDto);
         Task<bool> SendCodeToEmailAsync(EmailAdressDto emailAdressDto);
         Task<bool> UpdateAsync(Guid userId, AccountUpdateDto accountUpdateDto);

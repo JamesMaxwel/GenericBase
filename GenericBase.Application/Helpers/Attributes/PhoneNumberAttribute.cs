@@ -9,10 +9,10 @@ namespace GenericBase.Application.Helpers.Attributes
         {
             if (value == null || string.IsNullOrEmpty(value.ToString()))
             {
-                return ValidationResult.Success;
+                return new ValidationResult("Enter correct PhoneNumber!");
             }
 
-            Regex regex = new Regex(@"^(\d{2})(\d{5}|\d{4})(\d{4})$");
+            var regex = new Regex(@"^(\d{2})(\d{5}|\d{4})(\d{4})$");
 
             return regex.Match(value?.ToString()!).Success ? ValidationResult.Success
                 : new ValidationResult("Please enter valid phone number. Phone must be contains only numbers!");

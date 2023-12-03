@@ -19,7 +19,7 @@ namespace GenericBase.Application.Dto.RoleDto
 
         public static implicit operator Role(RoleCreateDto dto)
         {
-            return new Role(dto.Name, dto.Slug, dto.Description);
+            return new Role(dto.Name, dto.Slug) { Description = dto.Description };
 
         }
     }

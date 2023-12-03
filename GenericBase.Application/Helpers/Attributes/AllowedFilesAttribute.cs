@@ -24,7 +24,7 @@ namespace GenericBase.Application.Helpers.Attributes
                 }
                 else
                 {
-                    return new ValidationResult("This file extension is not supperted!");
+                    return new ValidationResult("This file extension is not supported!");
                 }
             }
             return ValidationResult.Success;

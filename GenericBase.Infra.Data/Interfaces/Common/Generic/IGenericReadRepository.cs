@@ -9,6 +9,5 @@ namespace GenericBase.Infra.Data.Interfaces.Common.Generic
         Task<TEntity?> GetFirstOrDefaultAsync(Expression<Func<TEntity, bool>> predicate, params Expression<Func<TEntity, object>>[] includes);
         Task<IEnumerable<TEntity>> GetAllAsync();
         Task<IEnumerable<TEntity>> GetWhereAsync(Expression<Func<TEntity, bool>> predicate);
-
     }
 }

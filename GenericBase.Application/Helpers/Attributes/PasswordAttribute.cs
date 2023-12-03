@@ -7,30 +7,30 @@ namespace GenericBase.Application.Helpers.Attributes
         protected override ValidationResult? IsValid(object? value, ValidationContext validationContext)
         {
             if (value == null)
-            {
                 return new ValidationResult("Password can not be null!");
-            }
-            else
+
+            if (value is not string password)
+                return new ValidationResult("The value must be a string.");
+
+
+            if (password.Length < 8)
             {
-                string password = value.ToString();
-                if (password.Length < 8)
-                {
-                    return new ValidationResult("Password must be at least 8 characters!");
-                }
-                else if (password.Length > 50)
-                {
-                    return new ValidationResult("Password must be less than 50 characters!");
-                }
-
-                var resault = IsStrong(password);
-
-                if (resault.IsValid is false)
-                {
-                    return new ValidationResult(resault.Message);
-                }
-
-                return ValidationResult.Success;
+                return new ValidationResult("Password must be at least 8 characters!");
             }
+            else if (password.Length > 50)
+            {
+                return new ValidationResult("Password must be less than 50 characters!");
+            }
+
+            var resault = IsStrong(password);
+
+            if (resault.IsValid is false)
+            {
+                return new ValidationResult(resault.Message);
+            }
+
+            return ValidationResult.Success;
+
         }
 
         public (bool IsValid, string Message) IsStrong(string password)

@@ -8,14 +8,14 @@ namespace GenericBase.Infra.Data.DataContext
     {
         public MyDbContext(DbContextOptions<MyDbContext> options) : base(options) { }
 
-        public DbSet<User>? Users { get; set; }
-        public DbSet<Permission>? Permissions { get; set; }
-        public DbSet<Role>? Roles { get; set; }
-        public DbSet<Customer>? Customers { get; set; }
-        public DbSet<Product>? Products { get; set; }
-        public DbSet<Category>? ProductCategories { get; set; }
-        public DbSet<Order>? Orders { get; set; }
-        public DbSet<OrderItem>? OrderDetails { get; set; }
+        public DbSet<User> Users => Set<User>();
+        public DbSet<Permission> Permissions => Set<Permission>();
+        public DbSet<Role> Roles => Set<Role>();
+        public DbSet<Customer> Customers => Set<Customer>();
+        public DbSet<Product> Products => Set<Product>();
+        public DbSet<ProductCategory> ProductCategories => Set<ProductCategory>();
+        public DbSet<Order> Orders => Set<Order>();
+        public DbSet<OrderItem> OrderDetails => Set<OrderItem>();
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {

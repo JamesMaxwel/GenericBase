@@ -14,7 +14,7 @@ namespace GenericBase.Application.Dto.PermissionDto
 
         public static implicit operator Permission(PermissionCreateDto dto)
         {
-            return new Permission(dto.Key, dto.Value, true);
+            return new Permission(dto.Key, dto.Value);
         }
 
     }

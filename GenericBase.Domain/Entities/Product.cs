@@ -19,9 +19,9 @@ namespace GenericBase.Domain.Entities
         public virtual Product? Parent { get; set; }
 
         public Guid? CategoryId { get; set; }
-        public virtual Category? Category { get; set; }
+        public virtual ProductCategory? Category { get; set; }
 
-        public ICollection<Product> Children { get; set; } = new Collection<Product>();
-        public ICollection<OrderItem> OrderDetails { get; set; } = new Collection<OrderItem>();
+        public virtual ICollection<Product> Children { get; set; } = new Collection<Product>();
+        public virtual ICollection<OrderItem> OrderDetails { get; set; } = new Collection<OrderItem>();
     }
 }
