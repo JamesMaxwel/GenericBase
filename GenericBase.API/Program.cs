@@ -1,3 +1,5 @@
+using GenericBase.Infra.Ioc;
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
@@ -5,7 +7,7 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 //IOC
-//builder.Services.AddServiceLayer(builder.Configuration);
+builder.Services.AddServiceLayer(builder.Configuration);
 
 var app = builder.Build();
 
@@ -22,6 +24,6 @@ app.UseAuthentication();
 app.MapControllers();
 
 //IOC 
-//app.AddBuildLayer();
+app.AddBuildLayer(app.Environment);
 
 app.Run();
