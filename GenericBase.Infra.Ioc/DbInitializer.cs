@@ -1,6 +1,7 @@
 ﻿using GenericBase.Application.Constants;
 using GenericBase.Application.Helpers;
 using GenericBase.Domain.Entities.Account;
+using GenericBase.Domain.Enums;
 using GenericBase.Infra.Data.DataContext;
 using Microsoft.Extensions.Logging;
 using System.Data;
