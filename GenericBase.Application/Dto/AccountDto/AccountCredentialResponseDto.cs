@@ -5,7 +5,7 @@ namespace GenericBase.Application.Dto.AccountDto
 {
     public class AccountCredentialResponseDto
     {
-        public ICollection<RoleResponseDto> Roles { get; set; } = new List<RoleResponseDto>();
-        public ICollection<PermissionResponseDto> Permissions { get; set; } = new List<PermissionResponseDto>();
+        public ICollection<RoleResponseDto> Roles { get; set; } = [];
+        public ICollection<PermissionResponseDto> Permissions { get; set; } = [];
     }
 }

@@ -4,7 +4,6 @@ using GenericBase.Application.Helpers.Exceptions;
 using GenericBase.Application.Helpers.Options;
 using GenericBase.Application.Interfaces;
 using GenericBase.Domain.Entities.Account;
-using GenericBase.Infra.Data.Interfaces.Account;
 using GenericBase.Infra.Data.Interfaces.Common;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
@@ -18,8 +17,6 @@ namespace GenericBase.Application.Services
     public class AuthService : IAuthService
     {
         private readonly IUnitOfWork _unitOfWork;
-        private readonly IUserRepository _userRepository;
-
 
         private readonly JwtSettings _jwtOptions;
 
@@ -27,12 +24,12 @@ namespace GenericBase.Application.Services
         {
             _unitOfWork = unitOfWork;
             _jwtOptions = jwtOptions.Value;
-            _userRepository = unitOfWork.Users;
+
         }
         public async Task<TokenResponseDto> GetTokenAsync(AccountLoginDto login)
         {
 
-            var account = await _userRepository.GetFirstOrDefaultWithCredentialsAsync(user => user.Email == login.Email)
+            var account = await _unitOfWork.Users.GetFirstOrDefaultWithCredentialsAsync(user => user.Email == login.Email)
                 ?? throw new StatusCodeException(HttpStatusCode.BadRequest, "Invalid username or password");
 
             if (account.IsLockedOut)
@@ -47,39 +44,57 @@ namespace GenericBase.Application.Services
         }
         public async Task<TokenResponseDto> GetRefreshTokenAsync(string refreshToken)
         {
-            var handler = new Microsoft.IdentityModel.JsonWebTokens.JsonWebTokenHandler();
-            var result = handler.ValidateToken(refreshToken, new TokenValidationParameters()
+            var tokenHandler = new JwtSecurityTokenHandler();
+            var tokenValidationParameters = new TokenValidationParameters
             {
                 ValidIssuer = _jwtOptions.Issuer,
                 ValidAudience = _jwtOptions.Audience,
-                RequireSignedTokens = false,
                 IssuerSigningKey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(_jwtOptions.SecretKey)),
-            });
+                ValidateIssuerSigningKey = true,
+                ValidateLifetime = true, // Valida se o token está expirado
+                ClockSkew = TimeSpan.Zero // Opcional: remove tolerância padrão para expiração
+            };
 
-            if (!result.IsValid)
-                throw new StatusCodeException(HttpStatusCode.BadRequest, "Expired token");
+            try
+            {
+                var principal = tokenHandler.ValidateToken(refreshToken, tokenValidationParameters, out var validatedToken);
 
-            var tkSub = result.Claims.FirstOrDefault(
-                cl => cl.Key == JwtRegisteredClaimNames.Sub).Value?.ToString()
-                ?? throw new StatusCodeException(HttpStatusCode.BadRequest, "Invalid token");
+                if (validatedToken is not JwtSecurityToken jwtToken ||
+                    !jwtToken.Header.Alg.Equals(SecurityAlgorithms.HmacSha256, StringComparison.InvariantCultureIgnoreCase))
+                {
+                    throw new StatusCodeException(HttpStatusCode.BadRequest, "Invalid token");
+                }
 
-            if (!Guid.TryParse(tkSub.ToString(), out Guid tkUserId))
-                throw new StatusCodeException(HttpStatusCode.BadRequest, "Invalid token");
+                var tkSub = principal.Claims.FirstOrDefault(cl => cl.Type == JwtRegisteredClaimNames.Sub)?.Value
+                    ?? throw new StatusCodeException(HttpStatusCode.BadRequest, "Invalid token");
 
-            var account = await _userRepository.GetFirstOrDefaultWithCredentialsAsync(tkUserId)
-              ?? throw new StatusCodeException(HttpStatusCode.BadRequest, "Invalid token");
+                if (!Guid.TryParse(tkSub, out var tkUserId))
+                    throw new StatusCodeException(HttpStatusCode.BadRequest, "Invalid token");
 
+                var account = await _unitOfWork.Users.GetFirstOrDefaultWithCredentialsAsync(tkUserId)
+                    ?? throw new StatusCodeException(HttpStatusCode.BadRequest, "Invalid token");
 
-            if (!result.Claims.Any(c => c.Key == JwtRegisteredClaimNames.Jti && c.Value?.ToString() == account.LastJti))
-                throw new StatusCodeException(HttpStatusCode.BadRequest, "Invalid token");
+                var jtiClaim = principal.Claims.FirstOrDefault(c => c.Type == JwtRegisteredClaimNames.Jti)?.Value;
+                if (jtiClaim != account.LastJti)
+                    throw new StatusCodeException(HttpStatusCode.BadRequest, "Invalid token");
 
-            if (account.IsLockedOut)
-                throw new StatusCodeException(HttpStatusCode.BadRequest, "Account blocked");
+                if (account.IsLockedOut)
+                    throw new StatusCodeException(HttpStatusCode.BadRequest, "Account blocked");
 
-            var newToken = await CreateTokenAsync(account);
+                var newToken = await CreateTokenAsync(account);
 
-            return newToken;
+                return newToken;
+            }
+            catch (SecurityTokenException)
+            {
+                throw new StatusCodeException(HttpStatusCode.BadRequest, "Invalid or expired token");
+            }
+            catch (Exception ex)
+            {
+                throw new StatusCodeException(HttpStatusCode.InternalServerError, $"An error occurred: {ex.Message}");
+            }
         }
+
         private async Task<TokenResponseDto> CreateTokenAsync(User user)
         {
 
@@ -93,7 +108,7 @@ namespace GenericBase.Application.Services
 
             user.LastJti = jti;
 
-            _userRepository.Update(user);
+            _unitOfWork.Users.Update(user);
             await _unitOfWork.SaveChangesAsync();
 
             return new TokenResponseDto(at, rt, _jwtOptions.AccessTokenExpiration, _jwtOptions.RefreshTokenExpiration);
